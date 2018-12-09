@@ -80,12 +80,22 @@ class Tokenizer:
     def __init__(self, nlp):
         self.nlp = nlp
 
-    def tokenize(self, texts):
+    def tokenize(self, texts, mc_adhoc=False):
         ret = []
+
+        # mc_adhoc
+        if mc_adhoc:
+            paragraphs = [val[0] for val in texts]
+            texts = [val[1] for val in texts]
+
         processed = self.nlp.pipe(texts)
         for text, p in zip(texts, processed):
             token_sequence = [Token(x.text, x.pos_, x.tag_) for x in p]
             ret.append(token_sequence)
+
+        # mc_adhoc
+        if mc_adhoc:
+            ret = list(zip(paragraphs, ret))
         return ret
     def tokenize_text(self, texts):
         return [' '.join([a.text for a in x]) for x in self.nlp.tokenizer.pipe(texts)]
@@ -150,16 +160,38 @@ class ReplaceRule:
             return True, ret_text, match_start - 1
         return True, ret_text
 
-    def apply_to_texts(self, token_sequences, idxs_only=False, fix_apostrophe=True):
+    def apply_to_texts(self, token_sequences, idxs_only=False, fix_apostrophe=True, mc_adhoc=False):
         # returns (idxs, new_texts), where
         # idxs is the indices where rule applies, and texts is the results text
+
+        '''
+        # mc_adhoc
+        if mc_adhoc:
+            paragraphs = [val[0] for val in token_sequences]
+            token_sequences = [val[1] for val in token_sequences]
+        '''
+
         idxs = []
         new_texts = []
-        for i, token_seq in enumerate(token_sequences):
-            status, ntext = self.apply(token_seq, status_only=idxs_only, fix_apostrophe=fix_apostrophe)
-            if status:
-                idxs.append(i)
-                new_texts.append(ntext)
+        if mc_adhoc:
+            for i, pair in enumerate(token_sequences):
+                status, ntext = self.apply(pair[1], status_only=idxs_only, fix_apostrophe=fix_apostrophe)
+                if status:
+                    idxs.append(i)
+                    new_texts.append((pair[0], ntext))
+        else:
+            for i, token_seq in enumerate(token_sequences):
+                status, ntext = self.apply(token_seq, status_only=idxs_only, fix_apostrophe=fix_apostrophe)
+                if status:
+                    idxs.append(i)
+                    new_texts.append(ntext)
+
+        '''
+        # mc_adhoc
+        if mc_adhoc:
+            new_texts = [(paragraphs[paragraph_index], new_texts[new_text_index]) for new_text_index, paragraph_index in enumerate(idxs)]
+        '''
+
         return np.array(idxs), new_texts
 
     def hash(self):

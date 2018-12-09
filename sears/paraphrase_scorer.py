@@ -1147,7 +1147,12 @@ class ParaphraseScorer(object):
             print('score_original:', back.score(translation, [sentence]))
             print()
 
-    def score_sentences(self, original_sentence, other_sentences, relative_to_original=False, verbose=False):
+    def score_sentences(self, original_sentence, other_sentences, relative_to_original=False, verbose=False, mc_adhoc=False):
+        #mc_adhoc
+        if mc_adhoc:
+            original_sentence = original_sentence[1]
+            other_sentences = [val[1] for val in other_sentences]
+
         memoized_stuff = self.last == original_sentence
         if relative_to_original:
             other_sentences = [original_sentence] + other_sentences
